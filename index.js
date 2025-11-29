@@ -7,11 +7,33 @@ app.use(express.json());
 app.use(cors());
 const stripe = require("stripe")(process.env.STRIPE_API);
 const { v4: uuidv4 } = require("uuid");
+var admin = require("firebase-admin");
+var serviceAccount = require("./zapshiftfirebaseadminsdk.json");
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+});
 
 // taracking id genarator
 function generateTrackingId() {
   return `TRK-${uuidv4()}`;
 }
+
+// middleware
+const verifyFbToken = async (req, res, next) => {
+  const token = req.headers.authorization;
+  if (!token) {
+    res.status(401).send({ message: "unauthorizes access" });
+    return;
+  }
+  try {
+    const tokenId = token.split(" ")[1];
+    const decoded = await admin.auth().verifyIdToken(tokenId);
+    req.decodedEmail = decoded.email;
+  } catch (error) {
+    return res.status(401).send({ message: "unauthorized access" });
+  }
+  next();
+};
 
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const uri = `mongodb+srv://admin:${process.env.DB_PASS}@cluster1.gq2vs5u.mongodb.net/?appName=Cluster1`;
@@ -33,11 +55,14 @@ async function run() {
 
     // parcel api
 
-    app.get("/parcels", async (req, res) => {
+    app.get("/parcels", verifyFbToken, async (req, res) => {
       const query = {};
       const { email } = req.query;
       if (email) {
         query.senderEmail = email;
+        if (email !== req.decodedEmail) {
+          return res.status(401).send({ message: "Forbidden access" });
+        }
       }
       const result = await parcelCollection.find(query).sort({ createdAt: -1 }).toArray();
       res.send(result);
