@@ -52,6 +52,22 @@ async function run() {
     const db = client.db("zapShift");
     const parcelCollection = db.collection("parcels");
     const paymentCollection = db.collection("payments");
+    const usersCollection = db.collection("users");
+
+    // users api
+    app.post("/users", async (req, res) => {
+      const user = req.body;
+
+      const check = await usersCollection.findOne({ email: user.email });
+      if (check) {
+        return res.send("message:user already exixts ");
+      }
+      user.role = "user";
+      user.createdAt = new Date();
+
+      const result = await usersCollection.insertOne(user);
+      res.send(result);
+    });
 
     // parcel api
 
