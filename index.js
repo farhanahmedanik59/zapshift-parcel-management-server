@@ -53,6 +53,7 @@ async function run() {
     const parcelCollection = db.collection("parcels");
     const paymentCollection = db.collection("payments");
     const usersCollection = db.collection("users");
+    const ridersCollectin = db.collection("riders");
 
     // users api
     app.post("/users", async (req, res) => {
@@ -66,6 +67,35 @@ async function run() {
       user.createdAt = new Date();
 
       const result = await usersCollection.insertOne(user);
+      res.send(result);
+    });
+
+    // riders api
+    app.post("/riders/:id", async (req, res) => {
+      const updatedDoc = {
+        $set: {
+          status: res.body.status,
+        },
+      };
+      const result = await ridersCollectin.updateOne({ _id: new ObjectId(req.params.id) });
+      res.send(result);
+    });
+
+    app.post("/riders", verifyFbToken, async (req, res) => {
+      const rider = req.body;
+      rider.status = "pending";
+      rider.createdAt = new Date();
+      console.log(rider);
+      const result = await ridersCollectin.insertOne(rider);
+      res.send(result);
+    });
+
+    app.get("/riders", async (req, res) => {
+      const query = {};
+      if (req.query.status) {
+        query.status = req.query.status;
+      }
+      const result = await ridersCollectin.find(query).toArray();
       res.send(result);
     });
 
