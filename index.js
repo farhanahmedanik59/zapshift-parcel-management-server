@@ -36,6 +36,7 @@ const verifyFbToken = async (req, res, next) => {
 };
 
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+
 const uri = `mongodb+srv://admin:${process.env.DB_PASS}@cluster1.gq2vs5u.mongodb.net/?appName=Cluster1`;
 const client = new MongoClient(uri, {
   serverApi: {
@@ -55,7 +56,45 @@ async function run() {
     const usersCollection = db.collection("users");
     const ridersCollectin = db.collection("riders");
 
+    // middle ware
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.decodedEmail;
+      const result = await usersCollection.findOne({ email: email });
+      if (!result || result.role !== "admin") {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+      next();
+    };
+
     // users api
+    app.get("/users/:email/role", async (req, res) => {
+      const result = await usersCollection.findOne({ email: req.params.email });
+      res.send({ role: result?.role || "user" });
+    });
+
+    app.patch("/users", verifyFbToken, verifyAdmin, async (req, res) => {
+      const { role, id } = req.body;
+      const result = await usersCollection.updateOne(
+        { _id: new ObjectId(id) },
+        {
+          $set: {
+            role: role,
+          },
+        }
+      );
+      res.send(result);
+    });
+
+    app.get("/users", verifyFbToken, async (req, res) => {
+      const search = req.query.search;
+      const query = {};
+      if (search) {
+        query.displayName = { $regex: search, $options: "i" };
+      }
+      const users = await usersCollection.find(query).toArray();
+      res.send(users);
+    });
+
     app.post("/users", async (req, res) => {
       const user = req.body;
 
@@ -89,7 +128,7 @@ async function run() {
       res.send(result);
     });
 
-    app.patch("/riders/:id", async (req, res) => {
+    app.patch("/riders/:id", verifyFbToken, verifyAdmin, async (req, res) => {
       const updatedDoc = {
         $set: {
           status: req.body.status,
