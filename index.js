@@ -71,21 +71,11 @@ async function run() {
     });
 
     // riders api
-    app.post("/riders/:id", async (req, res) => {
-      const updatedDoc = {
-        $set: {
-          status: res.body.status,
-        },
-      };
-      const result = await ridersCollectin.updateOne({ _id: new ObjectId(req.params.id) });
-      res.send(result);
-    });
 
     app.post("/riders", verifyFbToken, async (req, res) => {
       const rider = req.body;
       rider.status = "pending";
       rider.createdAt = new Date();
-      console.log(rider);
       const result = await ridersCollectin.insertOne(rider);
       res.send(result);
     });
@@ -97,6 +87,26 @@ async function run() {
       }
       const result = await ridersCollectin.find(query).toArray();
       res.send(result);
+    });
+
+    app.patch("/riders/:id", async (req, res) => {
+      const updatedDoc = {
+        $set: {
+          status: req.body.status,
+        },
+      };
+      const result = await ridersCollectin.updateOne({ _id: new ObjectId(req.params.id) }, updatedDoc);
+      res.send(result);
+      if (req.body.status === "approved") {
+        const changeRole = await usersCollection.updateOne(
+          { email: req.body.email },
+          {
+            $set: {
+              role: "rider",
+            },
+          }
+        );
+      }
     });
 
     // parcel api
