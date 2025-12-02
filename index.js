@@ -8,7 +8,7 @@ app.use(cors());
 const stripe = require("stripe")(process.env.STRIPE_API);
 const { v4: uuidv4 } = require("uuid");
 var admin = require("firebase-admin");
-var serviceAccount = require("./zapshiftfirebaseadminsdk.json");
+var serviceAccount = require("./zap-shift-524e5-firebase-adminsdk-fbsvc-02de2e3977.json");
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
