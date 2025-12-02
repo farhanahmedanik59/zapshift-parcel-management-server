@@ -120,8 +120,15 @@ async function run() {
     });
 
     app.get("/riders", async (req, res) => {
+      const { status, district, workStatus } = req.query;
       const query = {};
-      if (req.query.status) {
+      if (district) {
+        query.district = district;
+      }
+      if (workStatus) {
+        query.workStatus = workStatus;
+      }
+      if (status) {
         query.status = req.query.status;
       }
       const result = await ridersCollectin.find(query).toArray();
@@ -132,6 +139,7 @@ async function run() {
       const updatedDoc = {
         $set: {
           status: req.body.status,
+          workStatus: "available",
         },
       };
       const result = await ridersCollectin.updateOne({ _id: new ObjectId(req.params.id) }, updatedDoc);
@@ -151,33 +159,8 @@ async function run() {
     // parcel api
 
     app.get("/assign-parcels", async (req, res) => {
-      // const parcels = await parcelCollection.find().sort({ deliveryStatus: "pending-pickup", createdAt: 1, paymentStatus: "paid" }).toArray();
-      // res.send(parcels);
-      const parcels = await parcelCollection
-        .aggregate([
-          {
-            $addFields: {
-              sortPriority: {
-                $cond: [
-                  {
-                    $and: [
-                      { $eq: ["$paymentStatus", "paid"] },
-                      {
-                        $eq: ["$deliveryStatus", "pending-pickup"],
-                      },
-                    ],
-                  },
-                  0,
-                  1,
-                ],
-              },
-            },
-          },
-          {
-            $sort: { sortPriority: 1 },
-          },
-        ])
-        .toArray();
+      const parcels = await parcelCollection.find({ deliveryStatus: "pending-pickup", paymentStatus: "paid" }).toArray();
+
       res.send(parcels);
     });
 
@@ -211,6 +194,29 @@ async function run() {
       const { id } = req.params;
       const result = await parcelCollection.findOne({ _id: new ObjectId(id) });
       res.send(result);
+    });
+    app.patch("/percels/:id", async (req, res) => {
+      const { riderId, riderEmail, riderName, percelId } = req.body;
+      const updatedDoc = {
+        $set: {
+          deliveryStatus: "driver-assigned",
+          riderId: riderId,
+          riderName: riderName,
+          riderEmail: riderEmail,
+        },
+      };
+      const result = await parcelCollection.updateOne({ _id: new ObjectId(req.params.id) }, updatedDoc);
+      // update rider
+      const riderUpdate = await ridersCollectin.updateOne(
+        { _id: new ObjectId(riderId) },
+        {
+          $set: {
+            workStatus: "in-transit",
+          },
+        }
+      );
+      console.log(riderUpdate);
+      res.send(riderUpdate);
     });
 
     // STRIPE Api
