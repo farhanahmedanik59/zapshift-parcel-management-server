@@ -159,7 +159,7 @@ async function run() {
     // parcel api
 
     app.get("/assign-parcels", async (req, res) => {
-      const parcels = await parcelCollection.find({ deliveryStatus: "pending-pickup", paymentStatus: "paid" }).toArray();
+      const parcels = await parcelCollection.find({ paymentStatus: "paid" }).toArray();
 
       res.send(parcels);
     });
