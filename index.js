@@ -150,6 +150,37 @@ async function run() {
 
     // parcel api
 
+    app.get("/assign-parcels", async (req, res) => {
+      // const parcels = await parcelCollection.find().sort({ deliveryStatus: "pending-pickup", createdAt: 1, paymentStatus: "paid" }).toArray();
+      // res.send(parcels);
+      const parcels = await parcelCollection
+        .aggregate([
+          {
+            $addFields: {
+              sortPriority: {
+                $cond: [
+                  {
+                    $and: [
+                      { $eq: ["$paymentStatus", "paid"] },
+                      {
+                        $eq: ["$deliveryStatus", "pending-pickup"],
+                      },
+                    ],
+                  },
+                  0,
+                  1,
+                ],
+              },
+            },
+          },
+          {
+            $sort: { sortPriority: 1 },
+          },
+        ])
+        .toArray();
+      res.send(parcels);
+    });
+
     app.get("/parcels", verifyFbToken, async (req, res) => {
       const query = {};
       const { email } = req.query;
@@ -225,6 +256,7 @@ async function run() {
         const update = {
           $set: {
             paymentStatus: "paid",
+            deliveryStatus: "pending-pickup",
             trackingId: trackingId,
           },
         };
